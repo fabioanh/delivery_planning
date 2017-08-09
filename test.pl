@@ -28,3 +28,23 @@ driving_duration(VID, FromID, ToID, Duration) :-
   manhattan_distance(Origin, Destination, Distance),
   vehicle(VID, _, _, Pace, _, _),
   decimal_round(Distance * Pace, 1, Duration).
+
+
+get_order_value_helper([], Value).
+
+get_order_value_helper([ProductDetails|ProductsDetails], Value) :-
+  split_string(ProductDetails, "/", "", TmpList),
+  nth0(0, TmpList, ProductID),
+  nth0(1, TmpList, Quantity),
+  product(ProductID, Val, _),
+  get_order_value_helper(ProductsDetails, Value + (Val * Quantity)).
+
+
+% order_value(OID, Value)
+order_value(OID, Value) :-
+  order(OID, ProductList, _, _).
+
+% earning(+OID,+Day,-Value)
+%% Computes the revenue received for delivering order OID on day Day
+earning(OID, Day, Value) :-
+.
