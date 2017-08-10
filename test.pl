@@ -32,22 +32,38 @@ driving_duration(VID, FromID, ToID, Duration) :-
 
 % get_order_value_helper(+ProductsDetails, +Value, -Result)
 %% Recursive function used to go through a list of order details get the products information and compute the total order value.
-get_order_value_helper([], Value, Value).
+order_value([], Value, Value).
 
-get_order_value_helper([ProductDetails|ProductsDetails], Value, Result) :-
+order_value([ProductDetails|ProductsDetails], Value, Result) :-
   ProductID/Quantity = ProductDetails,
   product(ProductID, Val, _),
   R is Value + (Val * Quantity),
-  get_order_value_helper(ProductsDetails, R,  Result).
+  order_value(ProductsDetails, R,  Result).
 
+
+discount_factor(Day, Deadline, Factor) :-
+  Day =< Deadline,
+  Factor is 1.
+
+discount_factor(Day, Deadline, Factor) :-
+  Day > Deadline,
+  Factor is float(0.5).
 
 % order_value(OID, Value)
 %% Gives the value of an order based in its list of products
-order_value(OID, Value) :-
-  order(OID, ProductList, _, _),
-  get_order_value_helper(ProductList, 0, Value).
+%% order_value(OID, Value) :-
+%%   order(OID, ProductList, _, _),
+%%   get_order_value_helper(ProductList, 0, Value).
 
 % earning(+OID,+Day,-Value)
 %% Computes the revenue received for delivering order OID on day Day
 %% earning(OID, Day, Value) :-
-%% .
+%%   \+ working_day(Day, _, _),
+%%   false.
+
+earning(OID, Day, Value) :-
+  working_day(Day, _, _),
+  order(OID, ProductList, _, Deadline),
+  order_value(ProductList, 0, OrderValue),
+  discount_factor(Day, Deadline, DiscountFactor),
+  decimal_round(OrderValue * DiscountFactor, 1, Value).
