@@ -33,7 +33,7 @@ driving_duration(VID, FromID, ToID, Duration) :-
 
 
 % order_value(+ProductsDetails, +Value, -Result)
-%% Recursive function used to go through a list of order details get the products information and compute the total order value.
+%% Recursive function used to go through a list of order details, get the products information and compute the total order value.
 order_value([], Value, Value).
 
 order_value([ProductDetails|ProductsDetails], Value, Result) :-
@@ -60,3 +60,25 @@ earning(OID, Day, Value) :-
   order_value(ProductList, 0, OrderValue),
   discount_factor(Day, Deadline, DiscountFactor),
   decimal_round(OrderValue * DiscountFactor, 1, Value).
+
+
+
+
+
+order_weight([], Weight, Weight).
+
+order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
+  ProductID/Quantity = ProductDetails,
+  product(ProductID, _, ProductWeight),
+  decimal_round(Acc + (ProductWeight * Quantity), 1, R),
+  order_weight(ProductsDetails, R, Weight).
+
+load_weight([], Weight, Weight).
+
+load_weight([Order|Orders], Acc, Weight) :-
+  order_weight(Order, 0, OrderWeight),
+  decimal_round(Acc + OrderWeight, 1, R),
+  load_weight(Orders, R, Weight).
+
+load(Orders, Weight) :-
+  load_weight(Orders, 0, Weight).
