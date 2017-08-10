@@ -43,7 +43,7 @@ order_value([ProductDetails|ProductsDetails], Value, Result) :-
   order_value(ProductsDetails, R,  Result).
 
 % discount_factor(+Day, +Deadline, -Factor)
-%% Check if the given Day is before the Deadline and assign the proper discount factor when the condition is not met.
+%% Check if the given Day is before the Deadline and assign the proper discount factor when this condition is not met.
 discount_factor(Day, Deadline, Factor) :-
   Day =< Deadline,
   Factor is 1.
@@ -66,6 +66,8 @@ earning(OID, Day, Value) :-
 
 % order_weight(+ProductsDetails, +Acc, -Weight)
 %% Computes the weight of an order based on its product details: Weight and Quantity
+%% Give a set of Product Details in the form [p1ID/quantity1, ..., pkID,quantityK] and Acc = 0
+%% to compute the weight of the products identified by the ids in the list
 order_weight([], Weight, Weight).
 
 order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
@@ -76,6 +78,7 @@ order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
 
 % load_weight(+Orders, +Acc, -Weight).
 %% Auxiliary recursive function to compute the weight of load composed by a list of orders.
+%% Give a list of order IDs [o1, o2, ..., oK] and Acc = 0 in order to obtain the total weight of the listed orders.
 load_weight([], Weight, Weight).
 
 load_weight([Order|Orders], Acc, Weight) :-
@@ -88,3 +91,10 @@ load_weight([Order|Orders], Acc, Weight) :-
 %% Gives the weight of a list of orders.
 load(Orders, Weight) :-
   load_weight(Orders, 0, Weight).
+
+
+
+
+
+update_inventory(Inventory, OID, NewInventory) :-
+
