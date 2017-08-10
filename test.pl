@@ -64,7 +64,8 @@ earning(OID, Day, Value) :-
 
 
 
-
+% order_weight(+ProductsDetails, +Acc, -Weight)
+%% Computes the weight of an order based on its product details: Weight and Quantity
 order_weight([], Weight, Weight).
 
 order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
@@ -73,12 +74,17 @@ order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
   decimal_round(Acc + (ProductWeight * Quantity), 1, R),
   order_weight(ProductsDetails, R, Weight).
 
+% load_weight(+Orders, +Acc, -Weight).
+%% Auxiliary recursive function to compute the weight of load composed by a list of orders.
 load_weight([], Weight, Weight).
 
 load_weight([Order|Orders], Acc, Weight) :-
-  order_weight(Order, 0, OrderWeight),
+  order(Order, ProductsDetails, _, _),
+  order_weight(ProductsDetails, 0, OrderWeight),
   decimal_round(Acc + OrderWeight, 1, R),
   load_weight(Orders, R, Weight).
 
+% load(+Orders, -Weight)
+%% Gives the weight of a list of orders.
 load(Orders, Weight) :-
   load_weight(Orders, 0, Weight).
