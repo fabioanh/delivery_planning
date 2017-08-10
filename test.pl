@@ -30,21 +30,24 @@ driving_duration(VID, FromID, ToID, Duration) :-
   decimal_round(Distance * Pace, 1, Duration).
 
 
-get_order_value_helper([], Value).
+% get_order_value_helper(+ProductsDetails, +Value, -Result)
+%% Recursive function used to go through a list of order details get the products information and compute the total order value.
+get_order_value_helper([], Value, Value).
 
-get_order_value_helper([ProductDetails|ProductsDetails], Value) :-
-  split_string(ProductDetails, "/", "", TmpList),
-  nth0(0, TmpList, ProductID),
-  nth0(1, TmpList, Quantity),
+get_order_value_helper([ProductDetails|ProductsDetails], Value, Result) :-
+  ProductID/Quantity = ProductDetails,
   product(ProductID, Val, _),
-  get_order_value_helper(ProductsDetails, Value + (Val * Quantity)).
+  R is Value + (Val * Quantity),
+  get_order_value_helper(ProductsDetails, R,  Result).
 
 
 % order_value(OID, Value)
+%% Gives the value of an order based in its list of products
 order_value(OID, Value) :-
-  order(OID, ProductList, _, _).
+  order(OID, ProductList, _, _),
+  get_order_value_helper(ProductList, 0, Value).
 
 % earning(+OID,+Day,-Value)
 %% Computes the revenue received for delivering order OID on day Day
-earning(OID, Day, Value) :-
-.
+%% earning(OID, Day, Value) :-
+%% .
