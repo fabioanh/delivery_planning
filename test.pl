@@ -32,7 +32,7 @@ driving_duration(VID, FromID, ToID, Duration) :-
 
 
 
-% order_value(+ProductsDetails, +Value, -Result)
+% order_value(+ProductsDetailsList, +Value, -Result)
 %% Recursive function used to go through a list of order details, get the products information and compute the total order value.
 order_value([], Value, Value).
 
@@ -64,7 +64,7 @@ earning(OID, Day, Value) :-
 
 
 
-% order_weight(+ProductsDetails, +Acc, -Weight)
+% order_weight(+ProductsDetailsList, +Acc, -Weight)
 %% Computes the weight of an order based on its product details: Weight and Quantity
 %% Give a set of Product Details in the form [p1ID/quantity1, ..., pkID,quantityK] and Acc = 0
 %% to compute the weight of the products identified by the ids in the list
@@ -95,6 +95,43 @@ load(Orders, Weight) :-
 
 
 
+% subtract_value(+Product/Quantity, +ProductsDetailsList, -Result)
+%% Looking for a product matching the Product input in the ProductDetails list
+%% and subtracts its quantity value to the input Quanity for the given Product
+subtract_value(P/Q, [], P/Q).
 
+subtract_value(Product/Quantity, [Product/Q|_], ResProd/ResQuan) :-
+  Quan is Quantity - Q,
+  ResProd/ResQuan = Product/Quan,
+  !.
+
+subtract_value(Product/Quantity, [_|Products], Result) :-
+  subtract_value(Product/Quantity, Products, Result),
+  !.
+
+% subtract_products_list(+ProductsList, +SubtractionList, +Acc, -Result)
+%% Subtract a list containing product/quantity information from another list
+%% with the same kind of data. Returns a Result with a new list containing the
+%% product/quantity information updated => Products - SubtractionList
+subtract_products_list([], _, Result, Result).
+
+subtract_products_list([Product|Products], SubtractionList, Acc, Result) :-
+  subtract_value(Product, SubtractionList, SubtractedProduct),
+  append(Acc, [SubtractedProduct], AccRes),
+  subtract_products_list(Products, SubtractionList, AccRes, Result).
+
+positive_quantities([]).
+positive_quantities([_/Q|Prods]) :-
+  Q >= 0,
+  positive_quantities(Prods).
+
+% update_inventory(+Inventory, ?OrderID, ?NewInventory)
+%% Updates Inventory according to the product details information of the given OrderID
+%% subtracting the corresponding product quantities from the ones provided as
+%% Inventory.
 update_inventory(Inventory, OID, NewInventory) :-
-
+  order(OID, Products, _, _),
+  subtract_products_list(Inventory, Products, [], ResultInventory),
+  positive_quantities(ResultInventory),
+  NewInventory = ResultInventory,
+  !. % Validate if the first value is enough, if multiple values are required see how to deal with the false returned.
