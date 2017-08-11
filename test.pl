@@ -106,8 +106,7 @@ subtract_value(Product/Quantity, [Product/Q|_], ResProd/ResQuan) :-
   !.
 
 subtract_value(Product/Quantity, [_|Products], Result) :-
-  subtract_value(Product/Quantity, Products, Result),
-  !.
+  subtract_value(Product/Quantity, Products, Result).
 
 % subtract_products_list(+ProductsList, +SubtractionList, +Acc, -Result)
 %% Subtract a list containing product/quantity information from another list
