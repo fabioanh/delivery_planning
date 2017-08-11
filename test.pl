@@ -134,3 +134,12 @@ update_inventory(Inventory, OID, NewInventory) :-
   positive_quantities(ResultInventory),
   NewInventory = ResultInventory,
   !. % Validate if the first value is enough, if multiple values are required see how to deal with the false returned.
+
+
+
+
+
+
+
+is_valid(Plan) :-
+  .
