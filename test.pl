@@ -1,6 +1,8 @@
-% manhattan_distance(+location(X1, Y1), +location(X2, Y2), -Distance)
-%% Gives the manhattan distance in kilometers for the X and Y given coordinates
-manhattan_distance(location(X1, Y1), location(X2, Y2), Distance) :-
+% manhattan_distance(+FromID, +ToID, -Distance)
+%% Gives the manhattan distance in kilometers between the input ID locations
+manhattan_distance(FromID, ToID, Distance) :-
+  get_location(FromID, location(X1, Y1)),
+  get_location(ToID, location(X2, Y2)),
   XDis is abs(X1 - X2),
   YDis is abs(Y1 - Y2),
   Distance is float(XDis + YDis).
@@ -8,10 +10,10 @@ manhattan_distance(location(X1, Y1), location(X2, Y2), Distance) :-
 % get_location(+ResourceID, -location(X, Y))
 %% Finds the location of either depots or packages given the identifier of the resource.
 get_location(ResourceID, location(X, Y)) :-
-  depot(ResourceID, _, location(X,Y)).
+  depot(ResourceID, _, location(X,Y)), !.
 
 get_location(ResourceID, location(X, Y)) :-
-  order(ResourceID, _, location(X,Y), _).
+  order(ResourceID, _, location(X,Y), _), !.
 
 % decimal_round(+Val, +DecimalPositions, -Rounded)
 %% Rounds a float value to the desired number of decimal positions
@@ -21,11 +23,10 @@ decimal_round(Val, DecimalPositions, Rounded) :-
   Rounded is Tmp / RoundFactor.
 
 % driving_duration(+VID,+FromID,+ToID,-Duration).
-%% Gives the duration in minutes of a vehicle VID, spent going from the depot/oder FromID to the depot/order ToID
+%% Gives the duration in minutes of a vehicle VID.
+%% Time spent going from the depot/oder FromID to the depot/order ToID
 driving_duration(VID, FromID, ToID, Duration) :-
-  get_location(FromID, Origin),
-  get_location(ToID, Destination),
-  manhattan_distance(Origin, Destination, Distance),
+  manhattan_distance(FromID, ToID, Distance),
   vehicle(VID, _, _, Pace, _, _),
   decimal_round(Distance * Pace, 1, Duration).
 
@@ -33,7 +34,8 @@ driving_duration(VID, FromID, ToID, Duration) :-
 
 
 % order_value(+ProductsDetailsList, +Value, -Result)
-%% Recursive function used to go through a list of order details, get the products information and compute the total order value.
+%% Recursive function used to go through a list of order details, 
+%% get the products information and compute the total order value.
 order_value([], Value, Value).
 
 order_value([ProductDetails|ProductsDetails], Value, Result) :-
@@ -43,7 +45,8 @@ order_value([ProductDetails|ProductsDetails], Value, Result) :-
   order_value(ProductsDetails, R,  Result).
 
 % discount_factor(+Day, +Deadline, -Factor)
-%% Check if the given Day is before the Deadline and assign the proper discount factor when this condition is not met.
+%% Check if the given Day is before the Deadline and assign the proper discount factor 
+%% when this condition is not met.
 discount_factor(Day, Deadline, Factor) :-
   Day =< Deadline,
   Factor is 1.
@@ -78,7 +81,8 @@ order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
 
 % load_weight(+Orders, +Acc, -Weight).
 %% Auxiliary recursive function to compute the weight of load composed by a list of orders.
-%% Give a list of order IDs [o1, o2, ..., oK] and Acc = 0 in order to obtain the total weight of the listed orders.
+%% Give a list of order IDs [o1, o2, ..., oK] and Acc = 0 in order to obtain the total weight 
+%% of the listed orders.
 load_weight([], Weight, Weight).
 
 load_weight([Order|Orders], Acc, Weight) :-
@@ -133,7 +137,8 @@ update_inventory(Inventory, OID, NewInventory) :-
   subtract_products_list(Inventory, Products, [], ResultInventory),
   positive_quantities(ResultInventory),
   NewInventory = ResultInventory,
-  !. % Validate if the first value is enough, if multiple values are required see how to deal with the false returned.
+  !. % Validate if the first value is enough
+  %if multiple values are required see how to deal with the false returned.
 
 
 
@@ -141,5 +146,67 @@ update_inventory(Inventory, OID, NewInventory) :-
 
 
 
-is_valid(Plan) :-
-  .
+
+
+
+
+%% schedule(v2,1,[o6,d2,o8,d1]).
+
+%% loop through the Route, add the driving_duration between every two consecutive points
+%% and subtract it from the TimeLeft
+is_route_on_time(_, [], _) :- !.
+
+is_route_on_time(_, [_], _) :- !.
+
+is_route_on_time(Pace, [Current, Next | Rest], TimeLeft) :- 
+  manhattan_distance(Current, Next, Distance),
+  TLeft is TimeLeft - (Pace * Distance),
+  TLeft >= 0,
+  is_route_on_time(Pace, [Next|Rest], TLeft).
+
+orders_overhead([], OrdersExtraTime, OrdersExtraTime).
+
+orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
+  depot(Current, _, _),
+  orders_overhead(Next, Acc, OrdersExtraTime).
+
+orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
+  order(Current, _, _, _),
+  ET is Acc + 10,
+  orders_overhead(Next, ET, OrdersExtraTime).
+
+is_last_depot([_|DID]) :-
+  depot(DID, _, _).
+
+is_right_weight(Capacity, []).
+
+
+% A schedule is valid if:
+% - The Day is a working_day
+% - Vehicle load is never higher than its maximum capacity
+% - Following the route for the vehicle VID takes less time than what it has in the working day
+% - The end of the route is a Deposit
+% - Before going to a depot the vehicle should be always empty
+% - Load of orders at depot should be valid (Inventory with positive values. Depots are not re-stocked)
+% - 
+
+is_schedule_valid(schedule(VID, Day, [])) :-
+  working_day(Day, _, _),
+  vehicle(VID, _, _, _, _, _).
+
+is_schedule_valid(schedule(VID, Day, Route)) :-
+  vehicle(VID, Origin, Capacity, Pace, _, _),
+  working_day(Day, StartTime, EndTime),
+  orders_overhead(Route, 0, OrdersExtraTime),
+  TimeLeft is EndTime - StartTime - OrdersExtraTime,
+  is_route_on_time(Pace, [Origin|Route], TimeLeft),
+  is_last_depot(Route).
+
+schedules_valid([]).
+
+schedules_valid([Schedule|Schedules]) :-
+  is_schedule_valid(Schedule),
+  schedules_valid(Schedules).
+
+is_valid(plan(Schedules)) :-
+  schedules_valid(Schedules).
