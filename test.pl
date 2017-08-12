@@ -168,17 +168,33 @@ orders_overhead([], OrdersExtraTime, OrdersExtraTime).
 
 orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
   depot(Current, _, _),
-  orders_overhead(Next, Acc, OrdersExtraTime).
+  orders_overhead(Next, Acc, OrdersExtraTime), !.
 
 orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
   order(Current, _, _, _),
   ET is Acc + 10,
   orders_overhead(Next, ET, OrdersExtraTime).
 
-is_last_depot([_|DID]) :-
-  depot(DID, _, _).
+is_last_depot([DID]) :-
+  depot(DID, _, _), !.
 
-is_right_weight(Capacity, []).
+is_last_depot([_|T]) :-
+  is_last_depot(T).
+
+is_right_load(_, [], _) :- !.
+
+is_right_load(_, [DID], _) :-
+  depot(DID, _, _), !.
+
+is_right_load(Capacity, [DID|Route], Acc) :-
+  depot(DID, _, _),
+  is_right_load(Capacity, Route, Acc), !.
+
+is_right_load(Capacity, [OID|Route], Acc) :-
+  load([OID], OrderWeight), 
+  RAcc is Acc + OrderWeight,
+  Capacity - RAcc >= 0,
+  is_right_load(Capacity, Route, RAcc).
 
 
 % A schedule is valid if:
@@ -188,11 +204,12 @@ is_right_weight(Capacity, []).
 % - The end of the route is a Deposit
 % - Before going to a depot the vehicle should be always empty
 % - Load of orders at depot should be valid (Inventory with positive values. Depots are not re-stocked)
-% - 
+% - All working days need a schedule for a vehicle even if it is empty
 
 is_schedule_valid(schedule(VID, Day, [])) :-
   working_day(Day, _, _),
-  vehicle(VID, _, _, _, _, _).
+  vehicle(VID, _, _, _, _, _),
+  !.
 
 is_schedule_valid(schedule(VID, Day, Route)) :-
   vehicle(VID, Origin, Capacity, Pace, _, _),
@@ -200,7 +217,8 @@ is_schedule_valid(schedule(VID, Day, Route)) :-
   orders_overhead(Route, 0, OrdersExtraTime),
   TimeLeft is EndTime - StartTime - OrdersExtraTime,
   is_route_on_time(Pace, [Origin|Route], TimeLeft),
-  is_last_depot(Route).
+  is_last_depot(Route),
+  is_right_load(Capacity, Route, 0).
 
 schedules_valid([]).
 
