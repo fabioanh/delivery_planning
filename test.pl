@@ -175,10 +175,13 @@ orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
   ET is Acc + 10,
   orders_overhead(Next, ET, OrdersExtraTime).
 
+is_last_depot([]).
+
 is_last_depot([DID]) :-
   depot(DID, _, _).
 
 is_last_depot([_|T]) :-
+  T \= [],
   is_last_depot(T).
 
 is_right_load(_, [], _) :- !.
@@ -210,8 +213,8 @@ is_schedule_valid(schedule(VID, Day, [])) :-
   vehicle(VID, _, _, _, _, _).
   %% !.
 
-is_schedule_valid(schedule(VID, Day, Route)) :-
-  vehicle(VID, Origin, Capacity, Pace, _, _),
+is_schedule_valid(schedule(VID, Day, Route), Origin) :-
+  vehicle(VID, _, Capacity, Pace, _, _),
   working_day(Day, StartTime, EndTime),
   orders_overhead(Route, 0, OrdersExtraTime),
   TimeLeft is EndTime - StartTime - OrdersExtraTime,
@@ -306,11 +309,38 @@ is_inventory_valid(Schedules) :-
   orders_by_depot(Depots, VehicleRoutes, [], OrdersByDepot),
   valid_orders_by_depot(OrdersByDepot).
 
-schedules_valid([]).
+% - Get schedules by vehicle
+% - Sort schedules (Because of natural order they get sorted by day)
+% - Process each schedule setting as origin the last location of previous schedule
 
-schedules_valid([Schedule|Schedules]) :-
-  is_schedule_valid(Schedule),
-  schedules_valid(Schedules).
+are_schedules_valid([], _).
+
+are_schedules_valid([Schedule|Schedules], Origin) :-
+  is_schedule_valid(Schedule, Origin),
+  schedule(_, _, Route) = Schedule,
+  Route = [],
+  are_schedules_valid(Schedules, Origin).
+
+
+are_schedules_valid([Schedule|Schedules], Origin) :-
+  is_schedule_valid(Schedule, Origin),
+  schedule(_, _, Route) = Schedule,
+  Route \= [],
+  last(Route, NewOrigin),
+  are_schedules_valid(Schedules, NewOrigin).
+
+schedules_valid_by_vehicles(_, []).
+
+schedules_valid_by_vehicles(Schedules, [VID|Vehicles]) :-
+  include(schedule_belongs_to_vehicle(VID), Schedules, VSchedules),
+  sort(VSchedules, SortedVSchedules),
+  vehicle(VID, Origin, _, _, _, _),
+  are_schedules_valid(SortedVSchedules, Origin),
+  schedules_valid_by_vehicles(Schedules, Vehicles).
+
+schedules_valid(Schedules) :-
+  findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
+  schedules_valid_by_vehicles(Schedules, Vehicles).
 
 valid_complete_schedules(Schedules, VID, WDID) :-
   member(schedule(VID, WDID, _), Schedules), !.
@@ -335,4 +365,5 @@ complete_working_days(Schedules) :-
 % - In a plan, for every working day there should be a schedule plan for all vehicles even if it is empty
 is_valid(plan(Schedules)) :-
   complete_working_days(Schedules),
-  schedules_valid(Schedules).
+  schedules_valid(Schedules),
+  is_inventory_valid(Schedules).
