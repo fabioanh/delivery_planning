@@ -204,7 +204,6 @@ is_right_load(Capacity, [OID|Route], Acc) :-
 % - The end of the route is a Deposit
 % - Before going to a depot the vehicle should be always empty
 % - Load of orders at depot should be valid (Inventory with positive values. Depots are not re-stocked)
-% - All working days need a schedule for a vehicle even if it is empty
 
 is_schedule_valid(schedule(VID, Day, [])) :-
   working_day(Day, _, _),
@@ -226,5 +225,27 @@ schedules_valid([Schedule|Schedules]) :-
   is_schedule_valid(Schedule),
   schedules_valid(Schedules).
 
+valid_complete_schedules(Schedules, VID, WDID) :-
+  member(schedule(VID, WDID, _), Schedules), !.
+
+valid_complete_vehicles([], _, _).
+
+valid_complete_vehicles([Vehicle|Vehicles], Schedules, WorkingDay) :-
+  valid_complete_schedules(Schedules, Vehicle, WorkingDay),
+  valid_complete_vehicles(Vehicles, Schedules, WorkingDay).
+
+valid_complete_working_days([], _, _).
+
+valid_complete_working_days([WorkingDay|WorkingDays], Vehicles, Schedules) :-
+  valid_complete_vehicles(Vehicles, Schedules, WorkingDay),
+  valid_complete_working_days(WorkingDays, Vehicles, Schedules).
+
+complete_working_days(Schedules) :-
+  findall(X, (working_day(X, _, _)), WorkingDays),
+  findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
+  valid_complete_working_days(WorkingDays, Vehicles, Schedules).
+
+% - In a plan, for every working day there should be a schedule plan for all vehicles even if it is empty
 is_valid(plan(Schedules)) :-
+  complete_working_days(Schedules),
   schedules_valid(Schedules).
