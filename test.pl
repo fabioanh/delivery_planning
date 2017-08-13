@@ -246,28 +246,65 @@ get_vehicle_routes([Vehicle|Vehicles], Schedules, Acc, VehicleRoutes) :-
   include(schedule_belongs_to_vehicle(Vehicle), Schedules, VSchedules),
   sort(VSchedules, SortedVSchedules),
   get_routes(SortedVSchedules, [DID], FullRoutes),
-  append(Acc, FullRoutes, RAcc),
+  append(Acc, [FullRoutes], RAcc),
   get_vehicle_routes(Vehicles, Schedules, RAcc, VehicleRoutes).
 
+orders_from_route(_, [], _, Result, Result).
+
+orders_from_route(DID, [Location|Locations], Ignore, Acc, Result) :-
+  order(Location, _, _, _),
+  Ignore,
+  orders_from_route(DID, Locations, Ignore, Acc, Result).
+
+orders_from_route(DID, [Location|Locations], Ignore, Acc, Result) :-
+  order(Location, _, _, _),
+  \+ Ignore,
+  append(Acc, [Location], RAcc),
+  orders_from_route(DID, Locations, Ignore, RAcc, Result).
+
+orders_from_route(DID, [Location|Locations], _, Acc, Result) :-
+  depot(Location, _, _),
+  Location \= DID,
+  orders_from_route(DID, Locations, true, Acc, Result).
+
+orders_from_route(DID, [Location|Locations], _, Acc, Result) :-
+  depot(Location, _, _),
+  Location = DID,
+  orders_from_route(DID, Locations, false, Acc, Result).
+
+extract_orders(_, [], Result, Result).
+
 extract_orders(Depot, [Route|Routes], Acc, Result) :-
-  orders_from_route(Depot, Route, [], Orders),
+  orders_from_route(Depot, Route, true, [], Orders),
   append(Acc, Orders, RAcc),
   extract_orders(Depot, Routes, RAcc, Result).
 
 orders_by_depot([], _, Result, Result).
 
 orders_by_depot([Depot|Depots], VehicleRoutes, Acc, Result) :-
-  extract_orders(Depot, VehicleRoutes, [], Orders)
-  append(Acc, depot_orders(Depot, Orders), RAcc),
+  extract_orders(Depot, VehicleRoutes, [], Orders),
+  append(Acc, [depot_orders(Depot, Orders)], RAcc),
   orders_by_depot(Depots, VehicleRoutes, RAcc, Result).
+
+valid_inventory([], _).
+
+valid_inventory([Order|Orders], CurrentInventory) :-
+  update_inventory(CurrentInventory, Order, NewInventory),
+  valid_inventory(Orders, NewInventory).
+
+valid_orders_by_depot([]).
+
+valid_orders_by_depot([depot_orders(Depot, Orders)|DepotOrders]) :- 
+  depot(Depot, Inventory, _), 
+  valid_inventory(Orders, Inventory),
+  valid_orders_by_depot(DepotOrders).
 
 is_inventory_valid(Schedules) :-
   findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
   get_vehicle_routes(Vehicles, Schedules, [], VehicleRoutes),
   findall(X, (depot(X, _, _)), Depots),
-  orders_by_depot(Depots, VehicleRoutes, [], OrdesByDepot)
-  .
-  %% I'M WORKING HERE!!!!!!!!!!!!!!!!!!!!!!
+  orders_by_depot(Depots, VehicleRoutes, [], OrdersByDepot),
+  valid_orders_by_depot(OrdersByDepot).
 
 schedules_valid([]).
 
