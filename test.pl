@@ -107,7 +107,7 @@ subtract_value(P/Q, [], P/Q).
 subtract_value(Product/Quantity, [Product/Q|_], ResProd/ResQuan) :-
   Quan is Quantity - Q,
   ResProd/ResQuan = Product/Quan,
-  !.
+  !. % Check how to remove this cut. A bit dirty.
 
 subtract_value(Product/Quantity, [_|Products], Result) :-
   subtract_value(Product/Quantity, Products, Result).
@@ -136,9 +136,9 @@ update_inventory(Inventory, OID, NewInventory) :-
   order(OID, Products, _, _),
   subtract_products_list(Inventory, Products, [], ResultInventory),
   positive_quantities(ResultInventory),
-  NewInventory = ResultInventory,
-  !. % Validate if the first value is enough
-  %if multiple values are required see how to deal with the false returned.
+  NewInventory = ResultInventory. 
+  % Validate if the first value is enough. If so add a cut.
+  %If multiple values are required leave without cut.
 
 
 
@@ -176,7 +176,7 @@ orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
   orders_overhead(Next, ET, OrdersExtraTime).
 
 is_last_depot([DID]) :-
-  depot(DID, _, _), !.
+  depot(DID, _, _).
 
 is_last_depot([_|T]) :-
   is_last_depot(T).
@@ -207,17 +207,67 @@ is_right_load(Capacity, [OID|Route], Acc) :-
 
 is_schedule_valid(schedule(VID, Day, [])) :-
   working_day(Day, _, _),
-  vehicle(VID, _, _, _, _, _),
-  !.
+  vehicle(VID, _, _, _, _, _).
+  %% !.
 
 is_schedule_valid(schedule(VID, Day, Route)) :-
   vehicle(VID, Origin, Capacity, Pace, _, _),
   working_day(Day, StartTime, EndTime),
   orders_overhead(Route, 0, OrdersExtraTime),
   TimeLeft is EndTime - StartTime - OrdersExtraTime,
+  % FIX THIS! Origin is only this Origin for the first day, check how to do for the other days.
   is_route_on_time(Pace, [Origin|Route], TimeLeft),
   is_last_depot(Route),
   is_right_load(Capacity, Route, 0).
+
+% Inventory validation:
+% - Find all vehicles
+% - For each vehicle get all schedules for a vehicle
+% - Sort all those schedules
+% - Join all routes from those schedules + the initial depot for vehicle
+% - Separate groups of orders between every two depots: Go through list.
+%     - If depot create new inventory(DID, OrdersList)
+%     - If order loop and attach it to the list of [orders] until Depot found
+%     - If empty, Return the list of inventories.
+% - Join the inventories for the depots
+
+get_routes([], Result, Result).
+
+get_routes([schedule(_,_,Route)|Schedules], Acc, Result) :-
+  append(Acc, Route, RAcc),
+  get_routes(Schedules, RAcc, Result).
+
+schedule_belongs_to_vehicle(VID, schedule(VID, _, _)).
+
+get_vehicle_routes([], _, VehicleRoutes, VehicleRoutes).
+
+get_vehicle_routes([Vehicle|Vehicles], Schedules, Acc, VehicleRoutes) :-
+  vehicle(Vehicle, DID, _, _, _, _),
+  include(schedule_belongs_to_vehicle(Vehicle), Schedules, VSchedules),
+  sort(VSchedules, SortedVSchedules),
+  get_routes(SortedVSchedules, [DID], FullRoutes),
+  append(Acc, FullRoutes, RAcc),
+  get_vehicle_routes(Vehicles, Schedules, RAcc, VehicleRoutes).
+
+extract_orders(Depot, [Route|Routes], Acc, Result) :-
+  orders_from_route(Depot, Route, [], Orders),
+  append(Acc, Orders, RAcc),
+  extract_orders(Depot, Routes, RAcc, Result).
+
+orders_by_depot([], _, Result, Result).
+
+orders_by_depot([Depot|Depots], VehicleRoutes, Acc, Result) :-
+  extract_orders(Depot, VehicleRoutes, [], Orders)
+  append(Acc, depot_orders(Depot, Orders), RAcc),
+  orders_by_depot(Depots, VehicleRoutes, RAcc, Result).
+
+is_inventory_valid(Schedules) :-
+  findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
+  get_vehicle_routes(Vehicles, Schedules, [], VehicleRoutes),
+  findall(X, (depot(X, _, _)), Depots),
+  orders_by_depot(Depots, VehicleRoutes, [], OrdesByDepot)
+  .
+  %% I'M WORKING HERE!!!!!!!!!!!!!!!!!!!!!!
 
 schedules_valid([]).
 
