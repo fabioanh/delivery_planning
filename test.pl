@@ -607,7 +607,7 @@ profit(plan(Schedules), Profit) :-
 
 tabbed_print(Data) :-
   %% format('~s~t~8| ~s~t~16| ~s~t~24| ~s~t~120|~n', Data).
-  format('~s~t~8| ~s~t~16| ~s~t~24| ~s~t~n', Data).
+  format('~s~t~8| ~s~t~20| ~s~t~28| ~s~t~n', Data).
 
 prepend_zero(Str, Str) :-
   string_length(Str, Len),
@@ -618,20 +618,11 @@ prepend_zero(Str, Output) :-
   Len = 1,
   string_concat('0', Str, Output).
 
-append_zero(Str, Str) :-
-  string_length(Str, Len),
-  Len \= 1.
-
-append_zero(Str, Output) :-
-  string_length(Str, Len),
-  Len = 1,
-  string_concat(Str, '0', Output).
-
 format_time(Time, Output) :-
   Hours is div(Time, 60),
   Minutes is mod(Time, 60),
   prepend_zero(Hours, OutputHour),
-  append_zero(Minutes, OutputMins),
+  prepend_zero(Minutes, OutputMins),
   string_concat(OutputHour, ':', TmpTime),
   string_concat(TmpTime, OutputMins, TmpOutput),
   prepend_zero(TmpOutput, Output).
