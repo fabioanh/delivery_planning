@@ -150,6 +150,7 @@ update_inventory(Inventory, OID, NewInventory) :-
 
 
 
+
 %% schedule(v2,1,[o6,d2,o8,d1]).
 
 %% loop through the Route, add the driving_duration between every two consecutive points
@@ -251,6 +252,12 @@ get_single_vehicle_route(VID, Schedules, Route) :-
   include(schedule_belongs_to_vehicle(VID), Schedules, VSchedules),
   sort(VSchedules, SortedVSchedules),
   get_route(SortedVSchedules, [DID], Route).
+
+get_single_vehicle_route(VID, DepotID, Schedules, Route) :-
+  vehicle(VID, _, _, _, _, _),
+  include(schedule_belongs_to_vehicle(VID), Schedules, VSchedules),
+  sort(VSchedules, SortedVSchedules),
+  get_route(SortedVSchedules, [DepotID], Route).
 
 % schedule_belongs_to_vehicle(+VehicleID, +Schedule)
 %% Condition used to filter values in a list. Must evaluate to true when the VehicleID matches the value of
@@ -456,6 +463,7 @@ is_valid(plan(Schedules)) :-
 
 
 
+
 % BELONGS TO BASIC FUNCTIONALITIES MODULE
 % driving_cost(+VehicleID, +FromID, +ToID, -Cost)
 %% Obtains the cost of driving a vehicle from one location to another
@@ -584,3 +592,149 @@ profit(plan(Schedules), Profit) :-
   revenue(Schedules, Revenue),
   expenses(Schedules, Expenses),
   decimal_round(Revenue - Expenses, 1, Profit). % check if round is required
+
+
+
+
+
+
+
+
+
+
+
+
+
+tabbed_print(Data) :-
+  %% format('~s~t~8| ~s~t~16| ~s~t~24| ~s~t~120|~n', Data).
+  format('~s~t~8| ~s~t~16| ~s~t~24| ~s~t~n', Data).
+
+print_route_info([], _, _, _) :-
+  nl, nl, nl.
+
+prepend_zero(Str, Str) :-
+  string_length(Str, Len),
+  Len \= 1.
+
+prepend_zero(Str, Output) :-
+  string_length(Str, Len),
+  Len = 1,
+  string_concat('0', Str, Output).
+
+append_zero(Str, Str) :-
+  string_length(Str, Len),
+  Len \= 1.
+
+append_zero(Str, Output) :-
+  string_length(Str, Len),
+  Len = 1,
+  string_concat(Str, '0', Output).
+
+format_time(Time, Output) :-
+  Hours is div(Time, 60),
+  Minutes is mod(Time, 60),
+  prepend_zero(Hours, OutputHour),
+  append_zero(Minutes, OutputMins),
+  string_concat(OutputHour, ':', TmpTime),
+  string_concat(TmpTime, OutputMins, TmpOutput),
+  prepend_zero(TmpOutput, Output).
+
+format_coordinates(location(X, Y), Output) :-
+  string_concat('(', X, Tmp1),
+  string_concat(Tmp1, ',', Tmp2),
+  string_concat(Tmp2, Y, Tmp3),
+  string_concat(Tmp3, ')', Output).
+
+% If at a depot print actions for depot.
+print_route_info([Location|Route], VID, CurrentCoords, CurrentTime, CurrentLoad) :-
+  depot(Location, _, Coord),
+  format_time(CurrentTime, FormattedTime),
+  format_coordinates(Coord, Coordinates),
+  %% print_depot_actions(Route, ),
+  string_concat(CurrentLoad, 'Kg', StrLoad),
+  tabbed_print([FormattedTime, Coordinates, StrLoad, ]).
+
+% If delivering items print actions for orders.
+print_route_info([Location|Route], VID, CurrentCoords, CurrentTime, CurrentLoad) :-
+  order(Location, _, Coordinates, _),
+  format_time(CurrentTime, FormattedTime),
+  format_coordinates(Coord, Coordinates),
+  string_concat(CurrentLoad, 'Kg', StrLoad),
+  string_concat('Deliver order ', Location, ActionMessage),
+  tabbed_print([FormattedTime, Coordinates, StrLoad, ActionMessage]).
+
+% Auxiliary function to filter the list of origins
+origin_for_vehicle(VID, vehicle_origin(VID, _)).
+
+print_columns_header() :-
+  tabbed_print(['Time', 'Loc.', 'Load', 'Action']).
+
+% print_vehicles_info(+VehiclesList, +DayID +OriginsList, +SchedulesList)
+%% Print the information related to the list of vehicles for the input Schedules.
+%% The list of schedules is usually expected to come filtered by a day.
+print_vehicles_info([VID|Vehicles], Origins, Schedules) :-
+  write('< Vehicle '),
+  write(VID),
+  write(' >'),nl, nl,
+  print_columns_header,
+  include(origin_for_vehicle(VID), Day, Origins, [vehicle_origin(_, Origin)]),
+  get_single_vehicle_route(VID, Origin, Schedules, Route),
+  working_day(Day, StartTime, _),
+  print_route_info(Route, VID, StartTime, 0).
+
+% vehicle_origin_helper(+Index, +VehicleID, +WorkingDays, +Schedules, -Origin)
+%% Helper function to retrieve the origin once the list of origins has been assembled
+vehicle_origin_helper(Idx, VID, _, _, Origin) :-
+  Idx = 0,
+  vehicle(VID, Origin, _, _, _, _).
+
+vehicle_origin_helper(Idx, VID, WorkingDays, Schedules, Origin) :-
+  Idx \= 0,
+  Index is Idx - 1,
+  % Got to the day before and get last element from route:
+  % Filter all schedules by previous day
+  % Filter filtered schedules by vehicle
+  % Get route for filtered schedules
+  nth0(Index, WorkingDays, Day),
+  include(schedule_in_working_day(Day), Schedules, WDSchedules),
+  include(schedule_belongs_to_vehicle(VID), WDSchedules, VSchedules),
+  get_single_vehicle_route(VID, VSchedules, Route),
+  last(Route, Origin).
+
+% vehicles_origins_for_day(+VehiclesList, +Day, +Schedules, +Accumulator, -Origins)
+%% Retrieve the vehicle origins for a given day using the input Schedules as source.
+%% Returns a list of the type:
+%% [vehicle_origin(v1, origin1), vehicle_origin(v2, origin2) ...]
+vehicles_origins_for_day([], _, _, Origins, Origins).
+
+vehicles_origins_for_day([VID|Vehicles], Day, Schedules, Acc, Origins) :-
+  findall(X, (working_day(X, _, _)), WorkingDays),
+  sort(WorkingDays, SortedWorkingDays),
+  nth0(Idx, SortedWorkingDays, Day),
+  vehicle_origin_helper(Idx, VID, SortedWorkingDays, Schedules, Origin),
+  append(Acc, [vehicle_origin(VID, Origin)], RAcc),
+  vehicles_origins_for_day(Vehicles, Day, Schedules, RAcc, Origins) .
+
+% print_days_info(+WorkingDaysList, +SchedulesList)
+%% Iterates over the list of days to print the information related to the specific
+%% day in the given schedules
+print_days_info([], _) :-
+  write('*** END OF PLANNING ***'), nl.
+
+print_days_info([WDID|WorkingDays], Schedules) :-
+  write('*** Schedule for Day '),
+  write(WDID),
+  write(' ***'),
+  nl, nl,
+  include(schedule_in_working_day(WDID), Schedules, WDSchedules),
+  findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
+  vehicles_origins_for_day(Vehicles, WDID, Schedules, [], Origins),
+  print_vehicles_info(Vehicles, WDID, Origins, WDSchedules),
+  print_days_info(WorkingDays, Schedules).
+
+% pretty_print(+Plan)
+%% Prints plan in a human readable format
+pretty_print(plan(Schedules)) :-
+  findall(X, (working_day(X, _, _)), WorkingDays),
+  sort(WorkingDays, SortedWorkingDays),
+  print_days_info(SortedWorkingDays, Schedules).
