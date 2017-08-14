@@ -605,10 +605,14 @@ profit(plan(Schedules), Profit) :-
 
 
 
+% tabbed_print(+Data)
+%% Prints the 4 values contained in the list input Data with a given tabular format
 tabbed_print(Data) :-
   %% format('~s~t~8| ~s~t~16| ~s~t~24| ~s~t~120|~n', Data).
   format('~s~t~8| ~s~t~20| ~s~t~28| ~s~t~n', Data).
 
+% prepend_zero(+Input, -Output)
+%% Function to prepend a zero to hour values lower than 10
 prepend_zero(Str, Str) :-
   string_length(Str, Len),
   Len \= 1.
@@ -618,21 +622,28 @@ prepend_zero(Str, Output) :-
   Len = 1,
   string_concat('0', Str, Output).
 
+% format_time(+Time, -Output)
+%% Gets the time value into a human readable string instead of the numeric value
 format_time(Time, Output) :-
-  Hours is div(Time, 60),
-  Minutes is mod(Time, 60),
+  T is round(Time),
+  Hours is div(T, 60),
+  Minutes is mod(T, 60),
   prepend_zero(Hours, OutputHour),
   prepend_zero(Minutes, OutputMins),
   string_concat(OutputHour, ':', TmpTime),
   string_concat(TmpTime, OutputMins, TmpOutput),
   prepend_zero(TmpOutput, Output).
 
+% format_coordinates(+location(X, Y), -Output)
+%% Gets the location input value in a string human readable format
 format_coordinates(location(X, Y), Output) :-
   string_concat('(', X, Tmp1),
   string_concat(Tmp1, ',', Tmp2),
   string_concat(Tmp2, Y, Tmp3),
   string_concat(Tmp3, ')', Output).
 
+% ordinal(+Num, -Output)
+%% Prints special ordinal values for some numbers used in the pretty print
 ordinal(Num, Output) :-
   Num = 1,
   Output = '1st'.
@@ -646,11 +657,44 @@ ordinal(Num, Output) :-
   Output = '3rd'.
 
 ordinal(Num, Output) :-
+  Num = 101,
+  Output = '101st'.
+
+ordinal(Num, Output) :-
+  Num = 102,
+  Output = '102nd'.
+
+ordinal(Num, Output) :-
+  Num = 103,
+  Output = '103rd'.
+
+ordinal(Num, Output) :-
+  Num = 201,
+  Output = '201st'.
+
+ordinal(Num, Output) :-
+  Num = 202,
+  Output = '202nd'.
+
+ordinal(Num, Output) :-
+  Num = 203,
+  Output = '203rd'.
+
+ordinal(Num, Output) :-
   Num \= 1,
   Num \= 2,
   Num \= 3,
+  Num \= 101,
+  Num \= 102,
+  Num \= 103,
+  Num \= 201,
+  Num \= 202,
+  Num \= 203,
   string_concat(Num, 'th', Output).
 
+% drive_message(+Distance, +location(X, Y), -OutputMessage)
+%% Obtains the message corresponding to the distance driven
+%% to a set of coordinates for the location.
 drive_message(Distance, location(X, Y), Output) :-
   string_concat('Drive ', Distance, Str1),
   string_concat(Str1, 'Km to the intersection of ', Str2),
@@ -661,6 +705,9 @@ drive_message(Distance, location(X, Y), Output) :-
   string_concat(Str4, YStr, Str5),
   string_concat(Str5, ' street.', Output).
 
+% get_next_orders(+Route, +Accumulator, -OrdersList)
+%% Obtains the set of orders to be delivered after a depot
+%% when the first element in the list is a depot.
 get_next_orders([], Orders, Orders).
 
 get_next_orders([Location|_], Acc, Orders) :-
@@ -672,6 +719,9 @@ get_next_orders([Location|Locations], Acc, Orders) :-
   append(Acc, [Location], RAcc),
   get_next_orders(Locations, RAcc, Orders).
 
+% print_orders_pickup(+OrdersList, +DepotID, +InitTime, -CurrTime, +InitLoad, -CurrLoad)
+%% Prints the sequence of messages corresponding to the pickup process at a Depot.
+%% Outputs the updated time and load weight after the load operation.
 print_orders_pickup([], _ , CurrTime, CurrTime, CurrLoad, CurrLoad).
 
 print_orders_pickup([OID|Orders], DepotID, InitTime, CurrTime, InitLoad, CurrLoad) :-
@@ -688,13 +738,50 @@ print_orders_pickup([OID|Orders], DepotID, InitTime, CurrTime, InitLoad, CurrLoa
   decimal_round(InitLoad + OrderWeight, 1, NewLoad),
   print_orders_pickup(Orders, DepotID, NewTime, CurrTime, NewLoad, CurrLoad).
 
+%% Prints the corresponding messages for a route.
 print_route_info([], _, _, _, _) :-
   nl.
 
+% If at the final depot when empty route
+print_route_info([DepotID|Route], _, InitialCoords, InitialTime, InitialLoad) :-
+  depot(DepotID, _, Coords),
+  Route = [],
+  InitialCoords = Coords,
+  format_time(InitialTime, FInitialTime),
+  format_coordinates(Coords, FCoords),
+  decimal_round(InitialLoad, 1, CurrentLoad),
+  string_concat(CurrentLoad, 'Kg', StrLoad),
+  string_concat('The vehicle didn\'t move the whole day.', '', Message),
+  tabbed_print([FInitialTime, FCoords, StrLoad, Message]),
+  print_route_info([], _, _, _, _).
+
+% If at the final depot
+print_route_info([DepotID|Route], VID, InitialCoords, InitialTime, InitialLoad) :-
+  depot(DepotID, _, Coords),
+  Route = [],
+  InitialCoords \= Coords,
+  decimal_round(InitialLoad, 1, CurrentLoad),
+  string_concat(CurrentLoad, 'Kg', StrLoad),
+  get_location(PrevLoc, InitialCoords),
+  format_coordinates(InitialCoords, FInitialCoords),
+  manhattan_distance(PrevLoc, DepotID, Distance),
+  drive_message(Distance, Coords, DriveMessage),
+  format_time(InitialTime, FInitialTime),
+  tabbed_print([FInitialTime, FInitialCoords, StrLoad, DriveMessage]),
+  driving_duration(VID, PrevLoc, DepotID, Duration),
+  NewTime is InitialTime + Duration,
+  format_time(NewTime, FNewTime),
+  format_coordinates(Coords, FCoords),
+  string_concat('Park at Depot ', DepotID, Message),
+  tabbed_print([FNewTime, FCoords, StrLoad, Message]),
+  print_route_info([], _, _, _, _).
+
+
 % If at a depot print actions for depot.
-print_route_info([DepotID|Route], VID, Coords, InitialTime, InitialLoad) :-
+print_route_info([DepotID|Route], VID, _, InitialTime, InitialLoad) :-
   depot(DepotID, _, Coords),
   get_next_orders(Route, [], Orders),
+  Route \= [],
   print_orders_pickup(Orders, DepotID, InitialTime, CurrentTime, InitialLoad, CurrentLoad),
   print_route_info(Route, VID, Coords, CurrentTime, CurrentLoad).
 
@@ -706,7 +793,7 @@ print_route_info([OrderID|Route], VID, InitialCoords, InitialTime, InitialLoad) 
   get_location(PrevLoc, InitialCoords),
   manhattan_distance(PrevLoc, OrderID, Distance),
   string_concat(InitialLoad, 'Kg', StrLoad),
-  drive_message(Distance, InitialCoords, DriveMessage),
+  drive_message(Distance, Coordinates, DriveMessage),
   tabbed_print([FInitialTime, FInitialCoords, StrLoad, DriveMessage]),
   driving_duration(VID, PrevLoc, OrderID, Duration),
   NewTime is InitialTime + Duration,
@@ -722,7 +809,7 @@ print_route_info([OrderID|Route], VID, InitialCoords, InitialTime, InitialLoad) 
 % Auxiliary function to filter the list of origins
 origin_for_vehicle(VID, vehicle_origin(VID, _)).
 
-print_columns_header() :-
+print_columns_header :-
   tabbed_print(['Time', 'Loc.', 'Load', 'Action']).
 
 % print_vehicles_info(+VehiclesList, +DayID +OriginsList, +SchedulesList)
@@ -730,7 +817,7 @@ print_columns_header() :-
 %% The list of schedules is usually expected to come filtered by a day.
 
 print_vehicles_info([], _, _, _) :-
-  nl, nl, nl.
+  nl, nl.
 
 print_vehicles_info([VID|Vehicles], Day, Origins, Schedules) :-
   write('< Vehicle '),
@@ -797,6 +884,7 @@ print_days_info([WDID|WorkingDays], Schedules) :-
 % pretty_print(+Plan)
 %% Prints plan in a human readable format
 pretty_print(plan(Schedules)) :-
+  is_valid(plan(Schedules)),
   findall(X, (working_day(X, _, _)), WorkingDays),
   sort(WorkingDays, SortedWorkingDays),
   print_days_info(SortedWorkingDays, Schedules).
