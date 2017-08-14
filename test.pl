@@ -441,3 +441,29 @@ is_valid(plan(Schedules)) :-
   complete_working_days(Schedules),
   schedules_valid(Schedules),
   is_inventory_valid(Schedules).
+
+
+
+
+
+
+
+
+
+
+%% Sum of costs involve in a schedule
+%% - Fixed cost for using a vehicle on a working day
+%% - Cost per kilometer driven
+expenses(Schedules) :-
+  findall(X, (working_day(X, _, _)), WorkingDays),
+  expenses_per_working_day(WorkingDays, Schedules, [], WDExpenses),
+  driving_expenses(Schedules, DrivenCostExpenses).
+
+revenue(Schedules) :-
+  .
+
+%% Calculates the Revenue - Expenses
+profit(plan(Schedules), Profit) :-
+  revenue(Schedules, Revenue),
+  expenses(Schedules, Expenses)
+  Profit is Revenue - Expenses. % check if round is required
