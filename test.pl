@@ -34,7 +34,7 @@ driving_duration(VID, FromID, ToID, Duration) :-
 
 
 % order_value(+ProductsDetailsList, +Value, -Result)
-%% Recursive function used to go through a list of order details, 
+%% Recursive function used to go through a list of order details,
 %% get the products information and compute the total order value.
 order_value([], Value, Value).
 
@@ -45,7 +45,7 @@ order_value([ProductDetails|ProductsDetails], Value, Result) :-
   order_value(ProductsDetails, R,  Result).
 
 % discount_factor(+Day, +Deadline, -Factor)
-%% Check if the given Day is before the Deadline and assign the proper discount factor 
+%% Check if the given Day is before the Deadline and assign the proper discount factor
 %% when this condition is not met.
 discount_factor(Day, Deadline, Factor) :-
   Day =< Deadline,
@@ -81,7 +81,7 @@ order_weight([ProductDetails|ProductsDetails], Acc, Weight) :-
 
 % load_weight(+Orders, +Acc, -Weight).
 %% Auxiliary recursive function to compute the weight of load composed by a list of orders.
-%% Give a list of order IDs [o1, o2, ..., oK] and Acc = 0 in order to obtain the total weight 
+%% Give a list of order IDs [o1, o2, ..., oK] and Acc = 0 in order to obtain the total weight
 %% of the listed orders.
 load_weight([], Weight, Weight).
 
@@ -136,7 +136,7 @@ update_inventory(Inventory, OID, NewInventory) :-
   order(OID, Products, _, _),
   subtract_products_list(Inventory, Products, [], ResultInventory),
   positive_quantities(ResultInventory),
-  NewInventory = ResultInventory. 
+  NewInventory = ResultInventory.
   % Validate if the first value is enough. If so add a cut.
   %If multiple values are required leave without cut.
 
@@ -158,7 +158,7 @@ is_route_on_time(_, [], _).
 
 is_route_on_time(_, [_], _).
 
-is_route_on_time(Pace, [Current, Next | Rest], TimeLeft) :- 
+is_route_on_time(Pace, [Current, Next | Rest], TimeLeft) :-
   manhattan_distance(Current, Next, Distance),
   TLeft is TimeLeft - (Pace * Distance),
   TLeft >= 0,
@@ -189,8 +189,8 @@ is_last_depot([_|T]) :-
   is_last_depot(T).
 
 % is_right_load(+Capacity, +RouteList, +TotalLoadValue).
-%% Iterates over the list of locations (route) checking if the 
-%% commulative Total Load Value is lower than the Capacity 
+%% Iterates over the list of locations (route) checking if the
+%% commulative Total Load Value is lower than the Capacity
 is_right_load(_, [], _).
 
 is_right_load(_, [DID], _) :-
@@ -201,7 +201,7 @@ is_right_load(Capacity, [DID|Route], Acc) :-
   is_right_load(Capacity, Route, Acc).
 
 is_right_load(Capacity, [OID|Route], Acc) :-
-  load([OID], OrderWeight), 
+  load([OID], OrderWeight),
   RAcc is Acc + OrderWeight,
   Capacity - RAcc >= 0,
   is_right_load(Capacity, Route, RAcc).
@@ -238,31 +238,36 @@ is_schedule_valid(schedule(VID, Day, Route), Origin) :-
 %     - If empty, Return the list of inventories.
 % - Join the inventories for the depots
 
-get_routes([], Result, Result).
+get_route([], Result, Result).
 
-get_routes([schedule(_,_,Route)|Schedules], Acc, Result) :-
+get_route([schedule(_,_,Route)|Schedules], Acc, Result) :-
   append(Acc, Route, RAcc),
-  get_routes(Schedules, RAcc, Result).
+  get_route(Schedules, RAcc, Result).
+
+% get_single_vehicle_route(+VehicleID, +SchedulesList, -Route)
+%% Given a Vehicle ID gets the entire route for this vehicle in the given Schedules
+get_single_vehicle_route(VID, Schedules, Route) :-
+  vehicle(VID, DID, _, _, _, _),
+  include(schedule_belongs_to_vehicle(Vehicle), Schedules, VSchedules),
+  sort(VSchedules, SortedVSchedules),
+  get_route(SortedVSchedules, [DID], Route).
 
 % schedule_belongs_to_vehicle(+VehicleID, +Schedule)
 %% Condition used to filter values in a list. Must evaluate to true when the VehicleID matches the value of
 %% the vehicle identifier in a schedule data structure.
 schedule_belongs_to_vehicle(VID, schedule(VID, _, _)).
 
-% get_vehicle_routes(+VehiclesList, +SchedulesList, +Accumulator, -VehicleRoutesList)
+% get_vehicles_routes(+VehiclesList, +SchedulesList, +Accumulator, -VehicleRoutesList)
 %% Iterates over the list of vehicles getting the list of Routes (list of locations) for each vehicle
 %% in the input list of Schedules. Takes advantage of the fact that the list of Schedules is ordered
-%% by Working Day, so that the first element in the total route is the original location (depot) 
+%% by Working Day, so that the first element in the total route is the original location (depot)
 %% of the vehicle
-get_vehicle_routes([], _, VehicleRoutes, VehicleRoutes).
+get_vehicles_routes([], _, VehicleRoutes, VehicleRoutes).
 
-get_vehicle_routes([Vehicle|Vehicles], Schedules, Acc, VehicleRoutes) :-
-  vehicle(Vehicle, DID, _, _, _, _),
-  include(schedule_belongs_to_vehicle(Vehicle), Schedules, VSchedules),
-  sort(VSchedules, SortedVSchedules),
-  get_routes(SortedVSchedules, [DID], FullRoutes),
-  append(Acc, [FullRoutes], RAcc),
-  get_vehicle_routes(Vehicles, Schedules, RAcc, VehicleRoutes).
+get_vehicles_routes([Vehicle|Vehicles], Schedules, Acc, VehicleRoutes) :-
+  get_single_vehicle_route(Vehicle, Schedules, FullRoute),
+  append(Acc, [FullRoute], RAcc),
+  get_vehicles_routes(Vehicles, Schedules, RAcc, VehicleRoutes).
 
 % orders_from_route(+DepotID, +LocationsList, +Ignore, +Accumulator, -ResultList)
 %% Filters only the Orders list related to the given Depot ID
@@ -326,8 +331,8 @@ valid_inventory([Order|Orders], CurrentInventory) :-
 %% without surpassing the maximum value contained in the Depots' inventory.
 valid_orders_by_depot([]).
 
-valid_orders_by_depot([depot_orders(Depot, Orders)|DepotOrders]) :- 
-  depot(Depot, Inventory, _), 
+valid_orders_by_depot([depot_orders(Depot, Orders)|DepotOrders]) :-
+  depot(Depot, Inventory, _),
   valid_inventory(Orders, Inventory),
   valid_orders_by_depot(DepotOrders).
 
@@ -338,14 +343,14 @@ valid_orders_by_depot([depot_orders(Depot, Orders)|DepotOrders]) :-
 %% the list of orders contains unique values calling the only_once_orders predicate.
 is_inventory_valid(Schedules) :-
   findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
-  get_vehicle_routes(Vehicles, Schedules, [], VehicleRoutes),
+  get_vehicles_routes(Vehicles, Schedules, [], VehicleRoutes),
   findall(X, (depot(X, _, _)), Depots),
   orders_by_depot(Depots, VehicleRoutes, [], OrdersByDepot),
   valid_orders_by_depot(OrdersByDepot),
   only_once_orders(OrdersByDepot).
 
 % are_schedules_valid(+SchedulesList, +Origin)
-%% Verifies that the Schedules List is valid according to the constraints listed for the predicate 
+%% Verifies that the Schedules List is valid according to the constraints listed for the predicate
 %% 'schedules_valid'.
 %% The current method is in charge of the following logic:
 %% - Get schedules by vehicle
@@ -451,13 +456,97 @@ is_valid(plan(Schedules)) :-
 
 
 
-%% Sum of costs involve in a schedule
-%% - Fixed cost for using a vehicle on a working day
-%% - Cost per kilometer driven
-expenses(Schedules) :-
+% BELONGS TO BASIC FUNCTIONALITIES MODULE
+% driving_cost(+VehicleID, +FromID, +ToID, -Cost)
+%% Obtains the cost of driving a vehicle from one location to another
+driving_cost(VID, FromID, ToID, Cost) :-
+  manhattan_distance(FromID, ToID, Distance)
+  vehicle(VID, _, _, _, _, KmCost),
+  decimal_round(Distance * KmCost, 1, Cost).
+
+% route_cost(+VehicleID, +FromID, +LocationsList, +Accumulator, -Result)
+%% Computes the cost of a route identified as a list of locations for a given Vehicle
+route_cost(_, _, [], Cost, Cost).
+
+route_cost(VID, FromID, [ToID|Locations], Acc, Cost) :-
+  driving_cost(VID, FromID, ToID, TmpCost),
+  RAcc is Acc + TmpCost,
+  route_cost(VID, ToID, Locations, RAcc, Cost).
+
+% route_cost(+VehicleID, +LocationsList, -Cost)
+%% Auxiliary function to validate the case when the list of locations is empty.
+%% If the list is not empty calls route_cost/5
+route_cost(VID, Route, Cost) :-
+  Route \= [],
+  [Origin|Locations] = Route,
+  route_cost(VID, Origin, Locations, 0, Cost).
+
+route_cost(_, Route, Cost) :-
+  Route = [],
+  Cost is 0.
+
+% expenses_vehicles_routes(+VehiclesList, +SchedulesList, +Accumulator, -Cost)
+%% Iterates over a list of vehicles, using the input list of schedules computes the
+%% cost of the Route for each vehicle and sums all these values into a total cost.
+expenses_vehicles_routes([], Schedules, Cost, Cost).
+
+expenses_vehicles_routes([VID|Vehicles], Schedules, Acc, Result) :-
+  get_single_vehicle_route(VID, Schedules, Route),
+  route_cost(VID, Route, Cost)
+  RAcc is Acc + Cost,
+  expenses_vehicles_routes(Vehicles, Schedules, RAcc, Result).
+
+% driving_expenses(+Schedules, -Expenses)
+%% Gives the driving expenses for a given schedule.
+%% Wrapper of the expenses_vehicles_routes/4 predicate used to pass the list of
+%% all vehicles in theh problem.
+driving_expenses(Schedules, Expenses) :-
+  findall(X, (vehicle(X, _, _, _, _, _)), Vehicles),
+  expenses_vehicles_routes(Vehicles, Schedules, 0, Expenses).
+
+% vehicles_usage_cost(+SchedulesList, +Accumulator, +Result)
+%% Computes the cost of using a vehicle for the given Schedules List
+vehicles_usage_cost([], Cost, Cost).
+
+vehicles_usage_cost([schedule(VID, _, Route)|Schedules], Acc, Result) :-
+  Route = [],
+  vehicles_usage_cost([Schedules], Acc, Result).
+
+vehicles_usage_cost([schedule(VID, _, Route)|Schedules], Acc, Result) :-
+  Route \= [],
+  vehicle(VID, _, _, _, Cost, _),
+  RAcc is Acc + Cost,
+  vehicles_usage_cost([Schedules], RAcc, Result).
+
+% Auxiliary function to filter Schedules that belong to a given Working Day id.
+schedule_in_working_day(WDID, schedule(_, WDID, _)).
+
+% expenses_vehicles_usage(+WorkingDaysList, +SchedulesList, +Accumulator, -Result).
+%% Iterates over the working days getting the static cost of using a vehicle on
+%% each working day
+expenses_vehicles_usage([], _, Cost, Cost).
+
+expenses_vehicles_usage([WDID|WorkingDays], Schedules, Acc, Result) :-
+  include(schedule_in_working_day(WDID), Schedules, WDSchedules),
+  vehicles_usage_cost(WDSchedules, 0, Cost),
+  RAcc is Acc + Cost,
+  expenses_vehicles_usage(WorkingDays, Schedules, RAcc, Result).
+
+% fixed_cost_expenses(+SchedulesList, -Expenses)
+%% Wrapper function to compute the static cost of using the vehicles for a
+%% list of schedules
+fixed_cost_expenses(Schedules, Expenses) :-
   findall(X, (working_day(X, _, _)), WorkingDays),
-  expenses_per_working_day(WorkingDays, Schedules, [], WDExpenses),
-  driving_expenses(Schedules, DrivenCostExpenses).
+  expenses_vehicles_usage(WorkingDays, Schedules, 0, Expenses).
+
+% expenses(+Schedules, -Expenses)
+%% Sum of costs involved in a schedule
+%% - Cost for driving the car a distance given by a route
+%% - Fixed cost for using a vehicle on a working day
+expenses(Schedules, Expenses) :-
+  driving_expenses(Schedules, DrivingExpenses),
+  fixed_cost_expenses(Schedules, FCExpenses),
+  Expenses is DrivingExpenses + FCExpenses.
 
 revenue(Schedules) :-
   .
