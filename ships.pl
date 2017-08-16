@@ -14,7 +14,6 @@ container(b,4,7,baltimore).
 container(c,1,10,boston).
 container(d,1,16,miami).
 container(e,4,17,baltimore).
-container(f,4,18,miami).
 
 travel_time(origin,miami,5).
 travel_time(origin,boston,3).
@@ -58,7 +57,7 @@ get_earliest_schedule([schedule_max_time(Schedule,Time)|ScheduleTimes],
     ((Time #< CurrentEarliestTime) ->
         get_earliest_schedule(ScheduleTimes,schedule_max_time(Schedule,Time),EarliestScheduleTime) ;
         get_earliest_schedule(ScheduleTimes,schedule_max_time(CurrentEarliestSchedule,CurrentEarliestTime),EarliestScheduleTime)).
-
+    
 
 % schedule(-Schedule)
 %
@@ -67,11 +66,11 @@ get_earliest_schedule([schedule_max_time(Schedule,Time)|ScheduleTimes],
 %     pickup(ContainerName,Location,Time)
 %     travel(Location1,Location2,ArrivalTime),
 %     dropoff(ContainerName,Location,Time)
-schedule(Schedule) :-
-  findall(Ship,ship(Ship),Ships),
+schedule(ShipCargos) :-
+    findall(Ship,ship(Ship),Ships),
     findall(container(ContainerName,Size,AvailableTime,Destination),container(ContainerName,Size,AvailableTime,Destination),Containers),
-    load_ships(Containers,Ships,[],ShipCargos),
-  schedule(ShipCargos,[],Schedule).
+    load_ships(Containers,Ships,[],ShipCargos).
+    %% schedule(ShipCargos,[],Schedule).
 
 % load_ships(+Containers,+Ships,+ShipCargosAcc,-ShipCargos)
 %
@@ -87,7 +86,7 @@ load_ships(Containers,[Ship|Ships],ShipCargosAcc,ShipCargos) :-
     subtract_once(Containers,Cargo,RemainingContainers),
     load_ships(RemainingContainers,Ships,ShipCargosAcc2,ShipCargos).
 
-% schedule(+ShipCargos,+ScheduleAcc,-Schedule)
+% schedule(+ShipCargos,+ScheduleAcc,-Schedule)  
 schedule([],Schedule,Schedule).
 schedule([cargo(_,[])|ShipCargos],ScheduleAcc,Schedule) :-
     % Skip this ship if it has an empty cargo
@@ -110,7 +109,7 @@ schedule_pickups([],PickupEvents,PickupEvents).
 schedule_pickups([container(ContainerName,_,Time,_)|Containers],PickupEventsAcc,PickupEvents) :-
     append(PickupEventsAcc,[pickup(ContainerName,origin,Time)],PickupEventsAcc2),
     schedule_pickups(Containers,PickupEventsAcc2,PickupEvents).
-
+    
 % schedule_route(+Containers,+CurrentLocation,+CurrentTime,+EventsAcc,-Events)
 schedule_route([],_,_,Events,Events).
 schedule_route(Containers,Location,Time,EventsAcc,Events) :-
@@ -121,7 +120,7 @@ schedule_route(Containers,Location,Time,EventsAcc,Events) :-
     append(DropoffEvents,TravelEvents,NewEvents),
     append(EventsAcc,NewEvents,EventsAcc2),
     schedule_route(NewCargo,NewLocation,NewTime,EventsAcc2,Events).
-
+    
 % schedule_dropoffs(+Containers,+Location,+Time,+DropoffEventsAcc,-DropoffEvents,+NewCargoAcc,-NewCargo)
 %
 % For every container destined for this location, create a dropoff event.
@@ -149,8 +148,8 @@ schedule_travel(Containers,CurrentLocation,NewLocation,CurrentTime,NewTime,Trave
     travel_time(CurrentLocation,NewLocation,TravelTime),
     NewTime is CurrentTime+TravelTime,
     append(TravelEventsAcc,[travel(CurrentLocation,NewLocation,NewTime)],TravelEvents).
-
-
+    
+    
 
 % subset(+List,-Subset)
 %
@@ -164,7 +163,7 @@ subset([_|Tail], NTail):-
 % subtract_once(+List,+DeleteList,-NewList)
 %
 % Removes each element from DeleteList from List. Unlike the predicate from the lists
-% library, this only removes the first instance of each element in DeleteList from List.
+% library, this only removes the first instance of each element in DeleteList from List.  
 subtract_once(List, [], List).
 subtract_once(List, [Item|Delete], Result):-
   (select(Item, List, NList)->

@@ -116,13 +116,20 @@ get_products_quantity([P/Q|RawProds], Acc, Result) :-
   append(Acc,[product_quantity(P, Q)], RAcc),
   get_products_quantity(RawProds, RAcc, Result).
 
+assemble_depot_ids([], Result, Result).
+
+assemble_depot_ids([depot(DID, _, _)|Depots], Acc, Result) :-
+  append(Acc, [DID], RAcc),
+  assemble_depot_ids(Depots, RAcc, Result).
+
 assign_orders(_, [], Routes, Routes).
 
 assign_orders(Depots, [order(OID, Request, _, _)|Orders], Acc, Routes) :-
   subset(Depots, Source),
   findall(Inventory, member(depot(_, Inventory, _), Source), Inventories),
   valid_quantity(Inventories, Request),
-  append(Acc, [order_depot(OID, Source)], RAcc),
+  assemble_depot_ids(Source, [], Dpts),
+  append(Acc, [order_depot(OID, Dpts)], RAcc),
   assign_orders(Depots, Orders, RAcc, Routes).
 
 solve(Result) :-
@@ -130,3 +137,14 @@ solve(Result) :-
   get_orders(Orders),
   assign_orders(Depots, Orders, [], Result).
 
+
+% subset(+List,-Subset)
+%
+% Returns all ordered subsets of the given list.
+subset([], []).
+
+subset([E|Tail], [E|NTail]):-
+  subset(Tail, NTail).
+
+subset([_|Tail], NTail):-
+  subset(Tail, NTail).
