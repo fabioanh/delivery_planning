@@ -300,7 +300,7 @@ is_valid(plan(Schedules)) :-
 %   - No consecutive depots
 %   - Route is on time
 %   - Last element is a depot
-%   - 
+%   -
 %% is_route_valid([]).
 
 %% is_route_valid([X]) :-

@@ -142,7 +142,7 @@ subtract_value(Product/Quantity, [_|Products], Result) :-
 % subtract_products_list(+ProductsList, +SubtractionList, +Acc, -Result)
 %% Subtract a list containing product/quantity information from another list
 %% with the same kind of data. Returns a Result with a new list containing the
-%% product/quantity information updated => Products - SubtractionList
+%% product/quantity information updated => Result = Products - SubtractionList
 subtract_products_list([], _, Result, Result).
 
 subtract_products_list([Product|Products], SubtractionList, Acc, Result) :-

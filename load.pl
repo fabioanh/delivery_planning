@@ -13,5 +13,6 @@
 :- reexport([ core,
               print,
               valid,
-              profit
+              profit,
+              clp_solution
             ]).
