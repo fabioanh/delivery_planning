@@ -9,13 +9,21 @@
                 schedule_belongs_to_vehicle/2,
                 schedule_in_working_day/2,
                 get_single_vehicle_route/3,
-                get_single_vehicle_route/4]).
+                get_single_vehicle_route/4,
+                contains_duplicates/1]).
 
 % manhattan_distance(+FromID, +ToID, -Distance)
 %% Gives the manhattan distance in kilometers between the input ID locations
 manhattan_distance(FromID, ToID, Distance) :-
+  get_location(FromID, location(_, _)),
+  get_location(ToID, location(_, _)),
+  FromID = ToID,
+  Distance is 0.
+
+manhattan_distance(FromID, ToID, Distance) :-
   get_location(FromID, location(X1, Y1)),
   get_location(ToID, location(X2, Y2)),
+  FromID \= ToID,
   XDis is abs(X1 - X2),
   YDis is abs(Y1 - Y2),
   Distance is float(XDis + YDis).
@@ -191,3 +199,11 @@ get_single_vehicle_route(VID, DepotID, Schedules, Route) :-
   include(schedule_belongs_to_vehicle(VID), Schedules, VSchedules),
   sort(VSchedules, SortedVSchedules),
   get_route(SortedVSchedules, [DepotID], Route).
+
+% contains_duplicates(+List)
+%% Checks whether the given list contains or not duplicate values.
+contains_duplicates(List) :-
+  length(List, InitialLength),
+  sort(List, SortedList),
+  length(SortedList, FinalLength),
+  InitialLength \= FinalLength.

@@ -8,9 +8,11 @@
 %% and subtract it from the TimeLeft
 is_route_on_time(_, [], _).
 
-is_route_on_time(_, [_], _).
+is_route_on_time(_, [X], _) :-
+  get_location(X, _).
 
 is_route_on_time(Pace, [Current, Next | Rest], TimeLeft) :-
+  Current \= Next,
   manhattan_distance(Current, Next, Distance),
   TLeft is TimeLeft - (Pace * Distance),
   TLeft >= 0,
@@ -21,10 +23,12 @@ is_route_on_time(Pace, [Current, Next | Rest], TimeLeft) :-
 orders_overhead([], OrdersExtraTime, OrdersExtraTime).
 
 orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
+  Current \= Next,
   depot(Current, _, _),
   orders_overhead(Next, Acc, OrdersExtraTime).
 
 orders_overhead([Current|Next], Acc, OrdersExtraTime) :-
+  Current \= Next,
   order(Current, _, _, _),
   ET is Acc + 10,
   orders_overhead(Next, ET, OrdersExtraTime).
@@ -58,6 +62,17 @@ is_right_load(Capacity, [OID|Route], Acc) :-
   Capacity - RAcc >= 0,
   is_right_load(Capacity, Route, RAcc).
 
+is_route_coherent([]).
+
+is_route_coherent([X]) :-
+  get_location(X, _).
+
+is_route_coherent([Current, Next|Locations]) :-
+  get_location(Current, _),
+  get_location(Next, _),
+  Current \= Next,
+  is_route_coherent([Next|Locations]).
+
 
 % A schedule is valid if:
 % - The Day is a working_day
@@ -75,6 +90,7 @@ is_schedule_valid(schedule(VID, Day, Route), Origin) :-
   working_day(Day, StartTime, EndTime),
   orders_overhead(Route, 0, OrdersExtraTime),
   TimeLeft is EndTime - StartTime - OrdersExtraTime,
+  is_route_coherent([Origin|Route]),
   is_route_on_time(Pace, [Origin|Route], TimeLeft),
   is_last_depot(Route),
   is_right_load(Capacity, Route, 0).
@@ -215,6 +231,7 @@ schedules_valid_by_vehicles(Schedules, [VID|Vehicles]) :-
   sort(VSchedules, SortedVSchedules),
   vehicle(VID, Origin, _, _, _, _),
   are_schedules_valid(SortedVSchedules, Origin),
+  \+ contains_duplicates(SortedVSchedules),
   schedules_valid_by_vehicles(Schedules, Vehicles).
 
 %schedules_valid(+SchedulesList)
@@ -233,14 +250,6 @@ get_all_orders([depot_orders(_, Orders)|DepotOrders], Acc, Result) :-
   append(Acc, Orders, RAcc),
   get_all_orders(DepotOrders, RAcc, Result).
 
-% contains_duplicates(+List)
-%% Checks whether the given list contains or not duplicate values.
-contains_duplicates(List) :-
-  length(List, InitialLength),
-  sort(List, SortedList),
-  length(SortedList, FinalLength),
-  InitialLength \= FinalLength.
-
 only_once_orders(DepotOrders) :-
   get_all_orders(DepotOrders, [], AllOrders),
   \+ contains_duplicates(AllOrders).
@@ -248,7 +257,9 @@ only_once_orders(DepotOrders) :-
 % valid_complete_schedules(+SchedulesList, +VehicleID, +WorkingDayID)
 %% Checks that the Schedules list contains at least one value for the input Vehicle and Working Day
 valid_complete_schedules(Schedules, VID, WDID) :-
-  member(schedule(VID, WDID, _), Schedules), !.
+  select(schedule(VID, WDID, _), Schedules, Rest),
+  \+ member(schedule(VID, WDID, _), Rest), !.
+  %% member(schedule(VID, WDID, _), Schedules), !.
 
 % valid_complete_vehicles(+VehiclesList, +SchedulesList, +WorkingDay)
 %% Iterate over the list of Vehicles checking if the Schedules are valid for the given Working Day
@@ -276,8 +287,33 @@ complete_working_days(Schedules) :-
 % is_valid(+Plan)
 %% Validates whether a plan is valid or not checking the hard constraints for the problem.
 is_valid(plan(Schedules)) :-
-  complete_working_days(Schedules),
   schedules_valid(Schedules),
-  is_inventory_valid(Schedules).
+  is_inventory_valid(Schedules),
+  complete_working_days(Schedules).
 
 
+
+
+% *** FAILED ATTEMPT TO RE-WRITE ROUTE VALIDATION
+% A route is valid if:
+%   - All elements are valid locations
+%   - No consecutive depots
+%   - Route is on time
+%   - Last element is a depot
+%   - 
+%% is_route_valid([]).
+
+%% is_route_valid([X]) :-
+%%   get_location(X, _).
+
+%% is_route_valid(_, _, [Current, Next|[]]) :-
+%%   get_location(Current, _),
+%%   depot(Next, _, _),
+%%   Current \= Next.
+
+%% is_route_valid(VID, Origin, [Current, Next|Tail]) :-
+%%   get_location(Current, X),
+%%   get_location(Next, Y),
+%%   X \= Y,
+%%   vehicle(VID, _, _, Pace, _, _).
+  %% is_route_on_time(Pace, )

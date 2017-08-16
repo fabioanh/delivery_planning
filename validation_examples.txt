@@ -56,6 +56,14 @@ is_valid(plan([schedule(v2,1,[o5,d2]),schedule(v1,1,[o2,d1]),schedule(v2,3,[o1,d
 %plan([schedule(v2,1,[o6,d1]),schedule(v1,1,[o8,o4,o1,d2]),schedule(v2,3,[o5,d2]),schedule(v1,3,[o2,o7,d2])]) %v1's delivery route takes too long on day 1. 
 %plan([schedule(v1,1,[]),schedule(v2,1,[d2,o5,d2]),schedule(v1,3,[]),schedule(v2,3,[])]) %not enough of p1 is available in d2 to load o5.
 %plan([schedule(v1,1,[]),schedule(v2,1,[o2,d2]),schedule(v1,3,[]),schedule(v2,3,[])]) %v2 has insufficient capacity to load o2
+%is_valid(plan([])).
+%is_valid(plan([schedule(v1,1,[]),schedule(v2,1,[]),schedule(v1,2,[]),schedule(v2,2,[]),schedule(v1,3,[]),schedule(v2,3,[])])).
+%is_valid(plan([schedule(v1,1,[]),schedule(v2,1,[o6,d1]),schedule(v1,3,[]),schedule(v2,3,[o6,d1])])).
+%is_valid(plan([schedule(v2,1,[o6,d1]),schedule(v1,1,[o8,o3,o1,d2]),schedule(v2,3,[o5,d2]),schedule(v1,3,[o2,o7,d2])])).
+%is_valid(plan([schedule(v2,1,[o6,d1]),schedule(v1,1,[o8,o4,o1,d2]),schedule(v2,3,[o5,d2]),schedule(v1,3,[o2,o7,d2])])).
+%is_valid(plan([schedule(v1,1,[]),schedule(v2,1,[d2,o5,d2]),schedule(v1,3,[]),schedule(v2,3,[])])).
+%is_valid(plan([schedule(v1,1,[]),schedule(v2,1,[o2,d2]),schedule(v1,3,[]),schedule(v2,3,[])])).
+
 
 %profit/2
 profit(plan([schedule(v1,1,[]),schedule(v2,1,[]),schedule(v1,3,[]),schedule(v2,3,[])]),0.0).

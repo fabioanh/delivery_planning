@@ -1,6 +1,7 @@
 :- module(print, [pretty_print/1]).
 
 :- use_module(core).
+:- use_module(valid).
 
 % tabbed_print(+Data)
 %% Prints the 4 values contained in the list input Data with a given tabular format
@@ -265,7 +266,7 @@ vehicles_origins_for_day([VID|Vehicles], Day, Schedules, Acc, Origins) :-
 %% Iterates over the list of days to print the information related to the specific
 %% day in the given schedules
 print_days_info([], _) :-
-  write('*** END OF PLANNING ***'), nl.
+  writeln('*** END OF PLANNING ***').
 
 print_days_info([WDID|WorkingDays], Schedules) :-
   write('*** Schedule for Day '),
