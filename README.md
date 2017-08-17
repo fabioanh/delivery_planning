@@ -20,7 +20,7 @@ The implementation presents a solution to different questions through the follow
 
     Computes the duration used by the vehicle identified by _VID_ to go from the point _FromID_ to _ToID_. These two locations can be either a *Depot* or an *Order delivery location*. An example running the predicate to obtain a distance would look like this:
     ```prolog
-    ?- driving_duration(v1,d1,d2,X).
+    driving_duration(v1,d1,d2,X).
     X = 240.
     ```
 
@@ -28,7 +28,7 @@ The implementation presents a solution to different questions through the follow
 
     Gives the Value obtained for delivering an Order identified by its ID _OID_. The Original earnings of delivering an order are reduced by half when the order is not delivered on time. An example running this predicate will look like this:
     ```prolog
-    ?- earning(o1,3,X).
+    earning(o1,3,X).
     X = 192.5.
     ```
       
