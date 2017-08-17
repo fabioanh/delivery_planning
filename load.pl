@@ -12,7 +12,8 @@
 :- module(main,[]).
 :- reexport([ core,
               print,
-              valid,
+              %% valid,
               profit,
+              solution,
               clp_solution
             ]).

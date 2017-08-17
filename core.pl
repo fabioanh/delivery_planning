@@ -10,7 +10,12 @@
                 schedule_in_working_day/2,
                 get_single_vehicle_route/3,
                 get_single_vehicle_route/4,
-                contains_duplicates/1]).
+                contains_duplicates/1,
+                get_products_quantity/3,
+                get_orders/1,
+                get_depots/1,
+                get_working_days/1,
+                get_vehicles/1]).
 
 % manhattan_distance(+FromID, +ToID, -Distance)
 %% Gives the manhattan distance in kilometers between the input ID locations
@@ -207,3 +212,38 @@ contains_duplicates(List) :-
   sort(List, SortedList),
   length(SortedList, FinalLength),
   InitialLength \= FinalLength.
+
+
+
+
+%get_orders(-Orders)
+%% Get all the orders in the DB into a list
+get_orders(Orders) :-
+    findall(order(ID, Prods, Loc, DL), order(ID, Prods, Loc, DL), Orders).
+
+%get_depots(-Depots)
+%% Get all the depots in the DB into a list
+get_depots(Depots) :-
+    findall(depot(ID, Prods, Loc), depot(ID, Prods, Loc), Depots).
+
+%get_working_days(-WorkingDays)
+%% Get all the working days in the DB into a list sorted by its IDs - ascending
+get_working_days(WorkingDays) :-
+    findall(working_day(ID, Start, End), working_day(ID, Start, End), WDs),
+    sort(WDs, WorkingDays).
+
+%get_vehicles(-Vehicles)
+%% Get all the vehicles in the DB into a list
+get_vehicles(Vehicles) :-
+    findall(vehicle(A, B, C, D, E, F), vehicle(A, B, C, D, E, F), Vehicles).
+
+
+
+%% Transforms the list of products and quantities [P1/Q1, P2/Q2, ...]
+%% into a list of the type [product_quantity(P1, Q1), product_quantity(P2, Q2), ...]
+%% for easier understanding of process.
+get_products_quantity([], Result, Result).
+
+get_products_quantity([P/Q|RawProds], Acc, Result) :-
+  append(Acc,[product_quantity(P, Q)], RAcc),
+  get_products_quantity(RawProds, RAcc, Result).

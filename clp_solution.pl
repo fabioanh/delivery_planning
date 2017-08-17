@@ -1,6 +1,7 @@
 :- module(clp_solution, [pickup/1]).
 
 :- use_module(core).
+:- use_module(solution).
 :- use_module(library(clpfd)).
 
 valid_product_pickup([], _).
@@ -28,13 +29,6 @@ pickup(Pickup) :-
 %%   subset(Depots, Source),
 %%   findall(Inventory, member())
 %%   .
-
-get_orders(Orders) :-
-    findall(order(ID, Prods, Loc, DL), order(ID, Prods, Loc, DL), Orders).
-
-get_depots(Depots) :-
-    findall(depot(ID, Prods, Loc), depot(ID, Prods, Loc), Depots).
-
 
 create_assoc_list(Es,Ts,Assoc) :-
     empty_assoc(EmptyAssoc),
@@ -83,23 +77,7 @@ pckp(Results) :-
 
 
 
-valid_prods_quan_helper([], _).
 
-valid_prods_quan_helper([product_quantity(RP, _)| ReqProdsQuant], product_quantity(P, Q)) :-
-  RP \= P,
-  valid_prods_quan_helper(ReqProdsQuant, product_quantity(P, Q)).
-
-
-valid_prods_quan_helper([product_quantity(RP, RQ)| ReqProdsQuant], product_quantity(P, Q)) :-
-  RP = P,
-  Q #> RQ,
-  valid_prods_quan_helper(ReqProdsQuant, product_quantity(P, Q)).
-
-valid_products_quantity([], _).
-
-valid_products_quantity([SPQ|SourceProdsQuantity], RequestProdsQuantity) :-
-  valid_prods_quan_helper(RequestProdsQuantity, SPQ),
-  valid_products_quantity(SourceProdsQuantity, RequestProdsQuantity).
 
 valid_quantity([], _).
 
@@ -110,11 +88,7 @@ valid_quantity([Inventory|Inventories], Request) :-
   valid_quantity(Inventories, Request).
 
 
-get_products_quantity([], Result, Result).
 
-get_products_quantity([P/Q|RawProds], Acc, Result) :-
-  append(Acc,[product_quantity(P, Q)], RAcc),
-  get_products_quantity(RawProds, RAcc, Result).
 
 assemble_depot_ids([], Result, Result).
 
@@ -148,3 +122,10 @@ subset([E|Tail], [E|NTail]):-
 
 subset([_|Tail], NTail):-
   subset(Tail, NTail).
+
+
+
+
+
+
+
